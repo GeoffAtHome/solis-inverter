@@ -42,4 +42,4 @@ Happy to take feedback and PRs.
 Python is not my language of choice and this leaves a lot to be desired. It works but no tests have been written. My testing has basically seeing the packets sent in WireShark and ensuring I could create the some information via Home Assistant.
 
 # Credits
-Thanks to [SolarMon](https://github.com/StephanJoubert/home_assistant_solarman). My code a rip-off from this code base and modified to work with a **Solis RAI-3K-48ES-5G** . Why this will not work with the inverter I have beats me which is why I wrote this code.
+Thanks to [SolarMon](https://github.com/StephanJoubert/home_assistant_solarman). My code is a rip-off from this code base and modified to work with a **Solis RAI-3K-48ES-5G** . Why **SolarMon** this will not work with the inverter I have beats me which is why I wrote this code.
