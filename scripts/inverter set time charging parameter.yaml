@@ -1,0 +1,67 @@
+sequence:
+  - action: solis.write_multiple_holding_registers
+    metadata: {}
+    data:
+      values: >
+        {% set start_charge_hour = strptime(start_charge_time, '%H:%M:%S').hour
+        %} {% set start_charge_minute = strptime(start_charge_time,
+        '%H:%M:%S').minute %} {% set end_charge_hour = strptime(end_charge_time,
+        '%H:%M:%S').hour %} {% set end_charge_minute = strptime(end_charge_time,
+        '%H:%M:%S').minute %} {% set start_discharge_hour =
+        strptime(start_discharge_time, '%H:%M:%S').hour %} {% set
+        start_discharge_minute = strptime(start_discharge_time,
+        '%H:%M:%S').minute %} {% set end_discharge_hour =
+        strptime(end_discharge_time, '%H:%M:%S').hour %} {% set
+        end_discharge_minute = strptime(end_discharge_time, '%H:%M:%S').minute
+        %} {{ [(charge_current * 10), (discharge_current * 10),
+        start_charge_hour, start_charge_minute, end_charge_hour,
+        end_charge_minute, start_discharge_hour, start_discharge_minute,
+        end_discharge_hour, end_discharge_minute] }}
+      register: 43141
+fields:
+  start_charge_time:
+    selector:
+      time: {}
+    default: "00:00:00"
+    name: Start charge time
+    required: true
+  end_charge_time:
+    selector:
+      time: {}
+    default: "23:59:59"
+    name: End charge time
+    required: true
+  charge_current:
+    selector:
+      number:
+        min: 0
+        max: 70
+        step: 0.1
+    default: 50
+    name: Charge current
+    description: Charge current in amps
+    required: true
+  start_discharge_time:
+    selector:
+      time: {}
+    default: "00:05:00"
+    name: Start charge time
+    required: true
+  end_discharge_time:
+    selector:
+      time: {}
+    default: "00:06:00"
+    name: End charge time
+    required: true
+  discharge_current:
+    selector:
+      number:
+        min: 0
+        max: 70
+        step: 0.1
+    default: 0
+    name: Discharge current
+    description: Discharge current in amps
+    required: true
+alias: Inverter set time charging parameters
+description: ""

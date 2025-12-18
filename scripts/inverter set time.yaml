@@ -1,0 +1,13 @@
+sequence:
+  - action: solis.write_multiple_holding_registers
+    metadata: {}
+    data:
+      register: 43000
+      values: >
+        {% set now = now() %} {% set yy = now.strftime('%y') %} {% set mm =
+        now.strftime('%m') %} {% set dd = now.strftime('%d') %} {% set hh =
+        now.strftime('%H') %} {% set mi = now.strftime('%M') %} {% set ss =
+        now.strftime('%S') %} {{ [yy, mm, dd, hh, mi, ss] }}
+    enabled: true
+alias: Set inverter time
+description: ""

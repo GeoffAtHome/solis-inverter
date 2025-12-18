@@ -1,0 +1,8 @@
+sequence:
+  - action: solis.write_holding_register
+    metadata: {}
+    data:
+      register: 43110
+      value: 3
+alias: Inverter timed charging on
+description: ""
