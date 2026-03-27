@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 _inverter_scanner = InverterScanner()
 
 
-def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEntitiesCallback):
+async def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEntitiesCallback):
     _LOGGER.debug(f'sensor.py:async_setup_platform: {config}')
 
     inverter_name = config.get(CONF_NAME)
@@ -51,6 +51,9 @@ def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEnti
 
     session = async_get_clientsession(hass)
     inverter = Inverter(path, inverter_sn, inverter_host, inverter_port, lookup_file, session)
+    # Load the YAML configuration asynchronously without blocking the event loop
+    await inverter.async_init()
+    
     #  Prepare the sensor entities.
     hass_sensors = []
     for sensor in inverter.get_sensors():
@@ -80,12 +83,12 @@ def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEnti
 # Set-up from configuration.yaml
 async def async_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEntitiesCallback, discovery_info=None):
     _LOGGER.debug(f'sensor.py:async_setup_platform: {config}')
-    _do_setup_platform(hass, config, async_add_entities)
+    await _do_setup_platform(hass, config, async_add_entities)
 
 # Set-up from the entries in config-flow
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     _LOGGER.debug(f'sensor.py:async_setup_entry: {entry.options}')
-    _do_setup_platform(hass, entry.options, async_add_entities)
+    await _do_setup_platform(hass, entry.options, async_add_entities)
 
 
 #############################################################################################################
@@ -187,7 +190,7 @@ class SolisSensorText(SolisStatus):
                 self.p_state = val[self._field_name]
             else:
                 uom = getattr(self, 'uom', None)
-                if uom and (re.match("\S+", uom)):
+                if uom and (re.match(r"\S+", uom)):
                     self.p_state = None
                 _LOGGER.debug(f'No value recorded for {self._field_name}')
 

@@ -7,6 +7,7 @@ from datetime import datetime
 from .parser import ParameterParser
 from .const import *
 from custom_components.solis_direct import PySolis_direct
+from asyncio import get_event_loop, sleep as asyncio_sleep
 
 
 log = logging.getLogger(__name__)
@@ -28,9 +29,16 @@ class Inverter:
         self.lookup_file = lookup_file
         if not self.lookup_file or lookup_file == "parameters.yaml":
             self.lookup_file = "deye_hybrid.yaml"
+        self.parameter_definition = None
 
-        with open(self.path + self.lookup_file) as f:
-            self.parameter_definition = yaml.full_load(f)
+    async def async_init(self):
+        """Async initialization to load YAML file without blocking the event loop."""
+        def _load_yaml():
+            with open(self.path + self.lookup_file) as f:
+                return yaml.full_load(f)
+        
+        loop = get_event_loop()
+        self.parameter_definition = await loop.run_in_executor(None, _load_yaml)
 
     def connect_to_server(self):
         if self.solisClient:
@@ -92,10 +100,9 @@ class Inverter:
             msg.append(param & 0xFF)
 
         response = await self.solisClient.request(msg, msg_id)
-        if response != None:
-            return params.parse(response, start - 1, length, msg_id)
-
-        return None
+        # For write operations, just return the response without parsing
+        # Parsing is only needed for ParameterParser objects used in read operations
+        return response
 
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     async def async_update(self):
@@ -122,6 +129,16 @@ class Inverter:
                         self.connect_to_server()
                         await self.send_request(params, start, end, mb_fc, msg_id)
                         result = 1
+                    except (ValueError, IndexError) as e:
+                        # ValueError for timeouts, IndexError for malformed responses
+                        result = 0
+                        log.warning(
+                            f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
+                        )
+                        await self.disconnect_from_server()
+                        # Add delay before retry to give inverter time to recover
+                        if attempts_left > 0:
+                            await asyncio_sleep(0.5)
                     except Exception as e:
                         result = 0
                         log.warning(
@@ -169,6 +186,10 @@ class Inverter:
 
     # Service calls
     async def service_write_holding_register(self, register, value):
+        # Ensure value is a scalar, not a list
+        if isinstance(value, list):
+            value = value[0]
+        
         log.debug(
             f"Service Call: write_holding_register : [{register}], value : [{value}]"
         )
