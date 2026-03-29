@@ -134,12 +134,12 @@ class PySolis_direct:
 
 
     async def request(self, message, msg_id = 42):
-        """Read holding registers from modbus slave (Modbus function code 3)
+        """Send a Modbus RTU request to the data logger and return the decoded response.
 
-        :param register_addr: Modbus register start address
-        :type register_addr: int
-        :param quantity: Number of registers to query
-        :type quantity: int
+        :param message: The Modbus PDU to send (excluding MBAP/CRC)
+        :type message: list[int]
+        :param msg_id: Transaction identifier for the request
+        :type msg_id: int
 
         :return: List containing register values
         :rtype: list[int]
@@ -148,26 +148,27 @@ class PySolis_direct:
         if self.connected == False:
             await self.connect()
 
-        tasks = []
-        tasks.append(asyncio.ensure_future(self.readTask()))
-        tasks.append(asyncio.ensure_future(self.writeTask(msg_id, message)))
+        await self.writeTask(msg_id, message)
 
         try:
-            await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=10.0)
+            result = await asyncio.wait_for(self.reader.read(1024), timeout=15.0)
         except asyncio.exceptions.TimeoutError:
-            raise ValueError("The long operation timed out, but we've handled it.")
-
+            raise ValueError("Request timed out waiting for response from server")
         except asyncio.exceptions.CancelledError:
-            raise ValueError("The cancel error.")
+            raise ValueError("Request was cancelled")
+        except Exception as exc:
+            raise ValueError(f"Failed to send request: {exc}")
 
-        except:
-            raise ValueError("Failed to write")
+        if not result:
+            raise ValueError("No response received from server")
 
-        result = self.results[0]
-        self.results = []
+        if len(result) < 2:
+            raise ValueError("Incomplete response received from server")
 
-        if(len(result) > 0 and msg_id == result[0]):
-            return self.bytes_to_words_16(result[1:len(result)-1])
+        if msg_id != result[0]:
+            raise ValueError(
+                f"Invalid response header or message ID mismatch: expected {msg_id}, got {result[0]}"
+            )
 
-        return None
+        return self.bytes_to_words_16(result[1:len(result)-1])
 

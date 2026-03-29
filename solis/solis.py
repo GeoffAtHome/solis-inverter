@@ -132,23 +132,35 @@ class Inverter:
                     except (ValueError, IndexError) as e:
                         # ValueError for timeouts, IndexError for malformed responses
                         result = 0
-                        log.warning(
+                        msg = (
                             f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
                         )
+                        if attempts_left > 0:
+                            log.debug(msg)
+                        else:
+                            log.warning(msg)
                         await self.disconnect_from_server()
-                        # Add delay before retry to give inverter time to recover
                         if attempts_left > 0:
                             await asyncio_sleep(0.5)
                     except Exception as e:
                         result = 0
-                        log.warning(
+                        msg = (
                             f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
                         )
+                        if attempts_left > 0:
+                            log.debug(msg)
+                        else:
+                            log.warning(msg)
                         await self.disconnect_from_server()
                     if result == 0:
-                        log.warning(
-                            f"Querying [{start} - {end}] failed, [{attempts_left}] retry attempts left"
-                        )
+                        if attempts_left > 0:
+                            log.debug(
+                                f"Querying [{start} - {end}] failed, [{attempts_left}] retry attempts left"
+                            )
+                        else:
+                            log.warning(
+                                f"Querying [{start} - {end}] failed after retries, aborting."
+                            )
                     else:
                         log.debug(f"Querying [{start} - {end}] succeeded")
                         break
@@ -188,6 +200,8 @@ class Inverter:
     async def service_write_holding_register(self, register, value):
         # Ensure value is a scalar, not a list
         if isinstance(value, list):
+            if not value:
+                raise ValueError("Cannot write empty value list to holding register")
             value = value[0]
         
         log.debug(
