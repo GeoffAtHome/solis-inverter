@@ -16,6 +16,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
 from .const import *
 from .solis import Inverter
@@ -53,20 +54,23 @@ async def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : A
     inverter = Inverter(path, inverter_sn, inverter_host, inverter_port, lookup_file, session)
     # Load the YAML configuration asynchronously without blocking the event loop
     await inverter.async_init()
+
+    coordinator = SolisInverterCoordinator(hass, inverter)
+    await coordinator.async_refresh()
     
     #  Prepare the sensor entities.
     hass_sensors = []
     for sensor in inverter.get_sensors():
         try:
             if "isstr" in sensor:
-                hass_sensors.append(SolisSensorText(inverter_name, inverter, sensor, inverter_sn))
+                hass_sensors.append(SolisSensorText(coordinator, inverter_name, inverter, sensor, inverter_sn))
             else:
-                hass_sensors.append(SolisSensor(inverter_name, inverter, sensor, inverter_sn))
+                hass_sensors.append(SolisSensor(coordinator, inverter_name, inverter, sensor, inverter_sn))
         except BaseException as ex:
             _LOGGER.error(f'Config error {ex} {sensor}')
             raise
-    hass_sensors.append(SolisStatus(inverter_name, inverter, "status_lastUpdate", inverter_sn))
-    hass_sensors.append(SolisStatus(inverter_name, inverter, "status_connection", inverter_sn))
+    hass_sensors.append(SolisStatus(coordinator, inverter_name, inverter, "status_lastUpdate", inverter_sn))
+    hass_sensors.append(SolisStatus(coordinator, inverter_name, inverter, "status_connection", inverter_sn))
 
     _LOGGER.debug(f'sensor.py:_do_setup_platform: async_add_entities')
     _LOGGER.debug(hass_sensors)
@@ -74,6 +78,25 @@ async def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : A
     async_add_entities(hass_sensors)
     # Register the services with home assistant.
     register_services (hass, inverter)
+
+
+class SolisInverterCoordinator(DataUpdateCoordinator):
+    def __init__(self, hass: HomeAssistant, inverter: Inverter) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=MIN_TIME_BETWEEN_UPDATES,
+        )
+        self.inverter = inverter
+
+    async def _async_update_data(self):
+        await self.inverter.async_update()
+        return {
+            "values": self.inverter.get_current_val() or {},
+            "status_connection": self.inverter.status_connection,
+            "status_lastUpdate": self.inverter.status_lastUpdate,
+        }
 
 
 
@@ -128,8 +151,9 @@ class SolisSensor():
 #  It derives from the Entity class in HA and is suited for status values.
 #############################################################################################################
 
-class SolisStatus(SolisSensor, Entity):
-    def __init__(self, inverter_name, inverter, field_name, sn) -> None:
+class SolisStatus(SolisSensor, CoordinatorEntity):
+    def __init__(self, coordinator, inverter_name, inverter, field_name, sn) -> None:
+        CoordinatorEntity.__init__(self, coordinator)
         super().__init__(sn, inverter_name, inverter.lookup_file)
         self._inverter_name = inverter_name
         self.inverter = inverter
@@ -141,7 +165,7 @@ class SolisStatus(SolisSensor, Entity):
 
     @property
     def icon(self):
-        #  Return the icon of the sensor. """
+        #  Return the icon of the sensor.
         return self.p_icon
 
     @property
@@ -155,12 +179,18 @@ class SolisStatus(SolisSensor, Entity):
         return "{}_{}_{}".format(self._inverter_name, self._sn, self._field_name)
 
     @property
-    def state(self):
-        #  Return the state of the sensor.
-        return self.p_state
+    def should_poll(self):
+        return False
 
-    def update(self):
-        self.p_state = getattr(self.inverter, self._field_name, None)
+    @property
+    def state(self):
+        if self.coordinator.data is None:
+            return self.p_state
+
+        if self._field_name in ("status_lastUpdate", "status_connection"):
+            return self.coordinator.data.get(self._field_name)
+
+        return self.coordinator.data.get("values", {}).get(self._field_name)
 
 
 #############################################################################################################
@@ -169,30 +199,13 @@ class SolisStatus(SolisSensor, Entity):
 #############################################################################################################
 
 class SolisSensorText(SolisStatus):
-    def __init__(self, inverter_name, inverter, sensor, sn) -> None:
-        SolisStatus.__init__(self,inverter_name, inverter, sensor['name'], sn)
+    def __init__(self, coordinator, inverter_name, inverter, sensor, sn) -> None:
+        SolisStatus.__init__(self, coordinator, inverter_name, inverter, sensor['name'], sn)
         if 'icon' in sensor:
             self.p_icon = sensor['icon']
         else:
             self.p_icon = ''
         return
-
-
-    async def async_update(self):
-    #  Update this sensor using the data.
-    #  Get the latest data and use it to update our sensor state.
-    #  Retrieve the sensor data from actual interface
-        await self.inverter.async_update()
-
-        val = self.inverter.get_current_val()
-        if val is not None:
-            if self._field_name in val:
-                self.p_state = val[self._field_name]
-            else:
-                uom = getattr(self, 'uom', None)
-                if uom and (re.match(r"\S+", uom)):
-                    self.p_state = None
-                _LOGGER.debug(f'No value recorded for {self._field_name}')
 
 
 #############################################################################################################
@@ -201,8 +214,8 @@ class SolisSensorText(SolisStatus):
 #############################################################################################################
 
 class SolisSensor(SolisSensorText):
-    def __init__(self, inverter_name, inverter, sensor, sn) -> None:
-        SolisSensorText.__init__(self, inverter_name, inverter, sensor, sn)
+    def __init__(self, coordinator, inverter_name, inverter, sensor, sn) -> None:
+        SolisSensorText.__init__(self, coordinator, inverter_name, inverter, sensor, sn)
         self._device_class = sensor['class']
         if 'state_class' in sensor:
             self._state_class = sensor['state_class']
