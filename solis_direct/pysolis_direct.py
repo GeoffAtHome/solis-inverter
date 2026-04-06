@@ -59,6 +59,7 @@ class PySolis_direct:
         self._session = session if session else aiohttp.ClientSession()
         self.reader: asyncio.StreamReader = None  # noqa
         self.writer: asyncio.StreamWriter = None  # noqa
+        self._reader_lock = asyncio.Lock()  # Synchronize concurrent read access
 
     async def connect(self) -> None:
         """
@@ -148,27 +149,28 @@ class PySolis_direct:
         if self.connected == False:
             await self.connect()
 
-        await self.writeTask(msg_id, message)
+        async with self._reader_lock:
+            await self.writeTask(msg_id, message)
 
-        try:
-            result = await asyncio.wait_for(self.reader.read(1024), timeout=15.0)
-        except asyncio.exceptions.TimeoutError:
-            raise ValueError("Request timed out waiting for response from server")
-        except asyncio.exceptions.CancelledError:
-            raise ValueError("Request was cancelled")
-        except Exception as exc:
-            raise ValueError(f"Failed to send request: {exc}")
+            try:
+                result = await asyncio.wait_for(self.reader.read(1024), timeout=15.0)
+            except asyncio.exceptions.TimeoutError:
+                raise ValueError("Request timed out waiting for response from server")
+            except asyncio.exceptions.CancelledError:
+                raise ValueError("Request was cancelled")
+            except Exception as exc:
+                raise ValueError(f"Failed to send request: {exc}")
 
-        if not result:
-            raise ValueError("No response received from server")
+            if not result:
+                raise ValueError("No response received from server")
 
-        if len(result) < 2:
-            raise ValueError("Incomplete response received from server")
+            if len(result) < 2:
+                raise ValueError("Incomplete response received from server")
 
-        if msg_id != result[0]:
-            raise ValueError(
-                f"Invalid response header or message ID mismatch: expected {msg_id}, got {result[0]}"
-            )
+            if msg_id != result[0]:
+                raise ValueError(
+                    f"Invalid response header or message ID mismatch: expected {msg_id}, got {result[0]}"
+                )
 
-        return self.bytes_to_words_16(result[1:len(result)-1])
+            return self.bytes_to_words_16(result[1:len(result)-1])
 
