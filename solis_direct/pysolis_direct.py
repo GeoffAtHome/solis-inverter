@@ -75,8 +75,13 @@ class PySolis_direct:
             )
             self.connected = True
 
-        except:
-            raise NoSocketAvailableError(f"Cannot open connection to {self.address}:{self.port}")
+        except OSError as exc:
+            self.connected = False
+            self.reader = None
+            self.writer = None
+            raise NoSocketAvailableError(
+                f"Cannot open connection to {self.address}:{self.port}"
+            ) from exc
 
     async def reconnect(self) -> None:
         """
@@ -100,12 +105,24 @@ class PySolis_direct:
         :return: None
 
         """
-        if self.connected:
-            self.connected = False
-            self.writer.write(b"")
-            await self.writer.drain()
-            self.writer.close()
-            await self.writer.wait_closed()
+        writer = self.writer
+        self.connected = False
+        self.reader = None
+        self.writer = None
+
+        if writer is None:
+            return
+
+        try:
+            writer.close()
+            await writer.wait_closed()
+        except (ConnectionResetError, BrokenPipeError, OSError) as exc:
+            log.debug(
+                "Ignoring socket error while disconnecting from %s:%s: %s",
+                self.address,
+                self.port,
+                exc,
+            )
 
 
     async def readTask(self):
@@ -150,18 +167,23 @@ class PySolis_direct:
             await self.connect()
 
         async with self._reader_lock:
-            await self.writeTask(msg_id, message)
-
             try:
+                await self.writeTask(msg_id, message)
                 result = await asyncio.wait_for(self.reader.read(1024), timeout=15.0)
             except asyncio.exceptions.TimeoutError:
                 raise ValueError("Request timed out waiting for response from server")
             except asyncio.exceptions.CancelledError:
                 raise ValueError("Request was cancelled")
+            except (ConnectionResetError, BrokenPipeError, OSError) as exc:
+                self.connected = False
+                raise ConnectionError(
+                    f"Connection lost while communicating with {self.address}:{self.port}: {exc}"
+                ) from exc
             except Exception as exc:
-                raise ValueError(f"Failed to send request: {exc}")
+                raise ValueError(f"Failed to send request: {exc}") from exc
 
             if not result:
+                self.connected = False
                 raise ValueError("No response received from server")
 
             if len(result) < 2:

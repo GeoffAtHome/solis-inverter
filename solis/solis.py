@@ -55,6 +55,10 @@ class Inverter:
                     f"Disconnecting from Solis data logger {self._host}:{self._port}"
                 )
                 await self.solisClient.disconnect()
+            except Exception as e:
+                log.debug(
+                    f"Ignoring disconnect error for {self._host}:{self._port} [{type(e).__name__}: {e}]"
+                )
             finally:
                 self.solisClient = None
 
@@ -182,7 +186,7 @@ class Inverter:
                 await self.disconnect_from_server()
         except Exception as e:
             log.warning(
-                f"Querying inverter {self._serial} at {self._host}:{self._port} failed on connection start with exception [{type(e).__name__}: {e}]"
+                f"Querying inverter {self._serial} at {self._host}:{self._port} failed with unexpected exception [{type(e).__name__}: {e}]"
             )
             self.status_connection = "Disconnected"
             # Clear cached previous results to not report stale and incorrect data
