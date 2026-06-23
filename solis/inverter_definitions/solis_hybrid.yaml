@@ -105,6 +105,9 @@ parameters:
         rule: 1
         registers: [33049]
         icon: "mdi:solar-power"
+        validation:
+          min: 0
+          max: 100
 
       - name: "PV1 Current"
         class: "current"
@@ -113,6 +116,9 @@ parameters:
         rule: 1
         registers: [33050]
         icon: "mdi:current-dc"
+        validation:
+          min: 0
+          max: 32
 
       - name: "PV2 Voltage"
         class: "voltage"
@@ -122,6 +128,9 @@ parameters:
         rule: 1
         registers: [33051]
         icon: "mdi:solar-power"
+        validation:
+          min: 0
+          max: 100
 
       - name: "PV2 Current"
         class: "current"
@@ -131,6 +140,9 @@ parameters:
         rule: 1
         registers: [33052]
         icon: "mdi:current-dc"
+        validation:
+          min: 0
+          max: 32
 
       - name: "Inverter DC Power"
         class: "power"
@@ -533,6 +545,9 @@ parameters:
         rule: 1
         registers: [33133]
         icon: "mdi:battery"
+        validation:
+          min: 100
+          max: 300
 
       - name: "Battery Current"
         class: "current"
@@ -566,6 +581,9 @@ parameters:
         rule: 1
         registers: [33139]
         icon: "mdi:battery"
+        validation:
+          min: 0
+          max: 100
 
       - name: "Battery SOH"
         class: "battery"
@@ -575,6 +593,9 @@ parameters:
         rule: 1
         registers: [33140]
         icon: "mdi:battery"
+        validation:
+          min: 0
+          max: 100
 
       - name: "BMS Battery Voltage"
         class: "voltage"
@@ -965,10 +986,10 @@ parameters:
 # 0020   0a 01 d5 ca 1f 90 ab 39 16 6e 00 00 cd 9c 50 18   .......9.n....P.
 # 0030   fb 9f f6 e7 00 00 01 10 a7 f8 00 06 0c 00 19 00   ................
 # 0040   0c 00 0f 00 12 00 18 00 34 6a c9                  ........4j.
-# 
-# 01 10 a7 f8 00 06 0c 00 19 00 0c 00 0f 00 12 00 18 00 34 6a c9 
+#
 # 01 10 a7 f8 00 06 0c 00 19 00 0c 00 0f 00 12 00 18 00 34 6a c9
-# 
+# 01 10 a7 f8 00 06 0c 00 19 00 0c 00 0f 00 12 00 18 00 34 6a c9
+#
 # a7 f8 = 43000 => Real time clock year
 # 00 06 = 6 registers
 # 0c = 12 bytes length
@@ -987,8 +1008,8 @@ parameters:
 # 0030   ff 25 ce 5d 00 00 01 10 a8 85 00 0a 14 01 f4 00   .%.]............
 # 0040   00 00 04 00 00 00 06 00 3b 00 00 00 01 00 00 00   ........;.......
 # 0050   02 a8 d5                                          ...
-# 
-# 
+#
+#
 # a8 85 = 43141 => Timed Charge Current
 # 00 0a = 10 registers
 # 14  = 20 bytes length
@@ -1008,12 +1029,12 @@ parameters:
 # 0010   00 30 26 98 40 00 80 06 ac 19 0a 0a 0a 02 0a 0a   .0&.@...........
 # 0020   0a 01 dc f3 1f 90 a5 36 5c 95 00 00 71 9b 50 18   .......6\...q.P.
 # 0030   ff f7 64 a7 00 00 01 06 a8 66 00 03 09 b4         ..d......f....
-# 
+#
 # 04 78 63 e5 92 82 1c bf ce 93 2c 14 08 00 45 00   .xc.......,...E.
 # 00 30 26 98 40 00 80 06 ac 19 0a 0a 0a 02 0a 0a   .0&.@...........
 # 0a 01 dc f3 1f 90 a5 36 5c 95 00 00 71 9b 50 18   .......6\...q.P.
 # ff f7 64 a7 00 00 01 06 a8 66 00 03 09 b4         ..d......f....
-# 
+#
 # 01 = slave address
 # 06 = function code
 # a8 66 = register address 43110 => Inverter Active Power
