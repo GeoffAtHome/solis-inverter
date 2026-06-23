@@ -211,26 +211,52 @@ class Inverter:
         log.debug(
             f"Service Call: write_holding_register : [{register}], value : [{value}]"
         )
-        try:
-            self.connect_to_server()
-            await self.write_holding_register(register, value, 0x06, 1)
-        except Exception as e:
-            log.warning(
-                f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
-            )
-            await self.disconnect_from_server()
-        return
+        attempts_left = QUERY_RETRY_ATTEMPTS
+        while attempts_left > 0:
+            attempts_left -= 1
+            try:
+                self.connect_to_server()
+                await self.write_holding_register(register, value, 0x06, 1)
+                return
+            except (ValueError, IndexError) as e:
+                msg = f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
+                if attempts_left > 0:
+                    log.debug(msg + f", [{attempts_left}] retry attempts left")
+                else:
+                    log.warning(msg)
+                await self.disconnect_from_server()
+                if attempts_left > 0:
+                    await asyncio_sleep(0.5)
+            except Exception as e:
+                log.warning(
+                    f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
+                )
+                await self.disconnect_from_server()
+                return
 
     async def service_write_multiple_holding_registers(self, register, values):
         log.debug(
             f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}]"
         )
-        try:
-            self.connect_to_server()
-            await self.write_multiple_holding_registers(values, register, 0x10, 1)
-        except Exception as e:
-            log.warning(
-                f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
-            )
-            await self.disconnect_from_server()
-        return
+        attempts_left = QUERY_RETRY_ATTEMPTS
+        while attempts_left > 0:
+            attempts_left -= 1
+            try:
+                self.connect_to_server()
+                await self.write_multiple_holding_registers(values, register, 0x10, 1)
+                return
+            except (ValueError, IndexError) as e:
+                msg = f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
+                if attempts_left > 0:
+                    log.debug(msg + f", [{attempts_left}] retry attempts left")
+                else:
+                    log.warning(msg)
+                await self.disconnect_from_server()
+                if attempts_left > 0:
+                    await asyncio_sleep(0.5)
+            except Exception as e:
+                log.warning(
+                    f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
+                )
+                await self.disconnect_from_server()
+                return
