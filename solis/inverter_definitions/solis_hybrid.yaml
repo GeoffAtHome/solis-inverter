@@ -649,15 +649,6 @@ parameters:
         registers: [33150, 33149]
         icon: "mdi:battery-charging"
 
-      - name: "Timed Discharge End Minute"
-        class: ""
-        state_class: "measurement"
-        uom: "M"
-        scale: 1
-        rule: 1
-        registers: [43150]
-        icon: "mdi:wrench-clock"
-
       - name: "Inverter AC Power"
         class: "power"
         state_class: "measurement"
@@ -955,6 +946,15 @@ parameters:
         scale: 1
         rule: 1
         registers: [43149]
+        icon: "mdi:wrench-clock"
+
+      - name: "Timed Discharge End Minute"
+        class: ""
+        state_class: "measurement"
+        uom: "M"
+        scale: 1
+        rule: 1
+        registers: [43150]
         icon: "mdi:wrench-clock"
 #  - group: Generation
 #    items:
