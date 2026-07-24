@@ -20,7 +20,7 @@ requests:
     msg_id: 103
 
   - start: 43140
-    end: 43160
+    end: 43151
     mb_functioncode: 0x03
     msg_id: 104
 
