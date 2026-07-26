@@ -1,8 +1,11 @@
 
+import logging
+
 class ParameterParser:
     def __init__(self, lookups) ->None:
         self.result = {}
         self._lookups = lookups
+        self._LOGGER = logging.getLogger(__name__)
         return
 
     def parse (self, rawData, start, length, msg_id):
@@ -41,12 +44,24 @@ class ParameterParser:
     def do_validate(self, title, value, rule):
         if 'min' in rule:
             if rule['min'] > value:
+                self._LOGGER.debug(
+                    "Validation failed for %s: %s < min %s",
+                    title,
+                    value,
+                    rule['min'],
+                )
                 if 'invalidate_all' in rule:
                     raise ValueError(f'Invalidate complete dataset ({title} ~ {value})')
                 return False
 
         if 'max' in rule:
             if rule['max'] < value:
+                self._LOGGER.debug(
+                    "Validation failed for %s: %s > max %s",
+                    title,
+                    value,
+                    rule['max'],
+                )
                 if 'invalidate_all' in rule:
                     raise ValueError(f'Invalidate complete dataset ({title} ~ {value})')
                 return False
@@ -110,8 +125,15 @@ class ParameterParser:
                 mask = definition['mask']
                 value &= mask
 
+            raw_values = [rawData[r - start] for r in definition['registers']]
+            self._LOGGER.debug(
+                "Parsed unsigned field %s raw=%s scale=%s",
+                title,
+                raw_values,
+                scale,
+            )
             if 'lookup' in definition:
-                self.result[title] = self.lookup_value (value, definition['lookup'])
+                self.result[title] = self.lookup_value(value, definition['lookup'])
             else:
                 if 'offset' in definition:
                     value = value - definition['offset']
@@ -122,7 +144,15 @@ class ParameterParser:
                     if not self.do_validate(title, value, definition['validation']):
                         return
 
-                if self.is_integer_num (value):
+                if title == "Battery SOC":
+                    self._LOGGER.warning(
+                        "Parsed Battery SOC value=%s raw=%s validation=%s",
+                        value,
+                        raw_values,
+                        definition.get('validation'),
+                    )
+
+                if self.is_integer_num(value):
                     self.result[title] = int(value)
                 else:
                     self.result[title] = value

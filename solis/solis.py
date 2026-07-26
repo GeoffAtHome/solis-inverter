@@ -74,6 +74,14 @@ class Inverter:
 
         response = await self.solisClient.request(msg, msg_id)
         if response != None:
+            log.debug(
+                "Received response msg_id=%s start=%s end=%s len=%s raw=%s",
+                msg_id,
+                start,
+                end,
+                len(response),
+                response[: min(10, len(response))],
+            )
             params.parse(response, start - 1, length, msg_id)
 
     async def write_holding_register(self, address, value, mb_fc, msg_id):
