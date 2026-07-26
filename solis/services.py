@@ -32,7 +32,7 @@ SERVICE_WRITE_MULTIPLE_REGISTERS_SCHEMA = vol.Schema(
     }
 )
 
-def register_services (hass: HomeAssistant, inverter: Inverter ):
+def register_services(hass: HomeAssistant, inverter: Inverter, entry=None):
 
     async def write_holding_register(call) -> None:
         await inverter.service_write_holding_register(
@@ -46,11 +46,28 @@ def register_services (hass: HomeAssistant, inverter: Inverter ):
             values=call.data.get(PARAM_VALUES))
         return
 
-    hass.services.async_register(
-        DOMAIN, SERVICE_WRITE_REGISTER, write_holding_register, schema=SERVICE_WRITE_REGISTER_SCHEMA
-    )
+    if not hass.services.has_service(DOMAIN, SERVICE_WRITE_REGISTER):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_WRITE_REGISTER,
+            write_holding_register,
+            schema=SERVICE_WRITE_REGISTER_SCHEMA,
+        )
 
-    hass.services.async_register(
-        DOMAIN, SERVICE_WRITE_MULTIPLE_REGISTERS, write_multiple_holding_registers, schema=SERVICE_WRITE_MULTIPLE_REGISTERS_SCHEMA
-    )
+    if not hass.services.has_service(DOMAIN, SERVICE_WRITE_MULTIPLE_REGISTERS):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_WRITE_MULTIPLE_REGISTERS,
+            write_multiple_holding_registers,
+            schema=SERVICE_WRITE_MULTIPLE_REGISTERS_SCHEMA,
+        )
+
+    if entry is not None:
+        entry.async_on_unload(
+            lambda: hass.services.async_remove(DOMAIN, SERVICE_WRITE_REGISTER)
+        )
+        entry.async_on_unload(
+            lambda: hass.services.async_remove(DOMAIN, SERVICE_WRITE_MULTIPLE_REGISTERS)
+        )
+
     return

@@ -27,7 +27,12 @@ _LOGGER = logging.getLogger(__name__)
 _inverter_scanner = InverterScanner()
 
 
-async def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : AddEntitiesCallback):
+async def _do_setup_platform(
+    hass: HomeAssistant,
+    config,
+    async_add_entities: AddEntitiesCallback,
+    entry: ConfigEntry | None = None,
+):
     _LOGGER.debug(f'sensor.py:async_setup_platform: {config}')
 
     inverter_name = config.get(CONF_NAME)
@@ -77,7 +82,7 @@ async def _do_setup_platform(hass: HomeAssistant, config, async_add_entities : A
 
     async_add_entities(hass_sensors)
     # Register the services with home assistant.
-    register_services (hass, inverter)
+    register_services(hass, inverter, entry)
 
 
 class SolisInverterCoordinator(DataUpdateCoordinator):
@@ -111,7 +116,7 @@ async def async_setup_platform(hass: HomeAssistant, config, async_add_entities :
 # Set-up from the entries in config-flow
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
     _LOGGER.debug(f'sensor.py:async_setup_entry: {entry.options}')
-    await _do_setup_platform(hass, entry.options, async_add_entities)
+    await _do_setup_platform(hass, entry.options, async_add_entities, entry)
 
 
 #############################################################################################################
