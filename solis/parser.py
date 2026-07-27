@@ -44,7 +44,7 @@ class ParameterParser:
     def do_validate(self, title, value, rule):
         if 'min' in rule:
             if rule['min'] > value:
-                self._LOGGER.debug(
+                self._LOGGER.error(
                     "Validation failed for %s: %s < min %s",
                     title,
                     value,
@@ -56,7 +56,7 @@ class ParameterParser:
 
         if 'max' in rule:
             if rule['max'] < value:
-                self._LOGGER.debug(
+                self._LOGGER.error(
                     "Validation failed for %s: %s > max %s",
                     title,
                     value,

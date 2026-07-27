@@ -544,8 +544,8 @@ parameters:
         registers: [33133]
         icon: "mdi:battery"
         validation:
-          min: 100
-          max: 300
+          min: 35
+          max: 60
 
       - name: "Battery Current"
         class: "current"
