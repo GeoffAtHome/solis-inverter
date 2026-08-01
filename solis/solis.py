@@ -72,18 +72,24 @@ class Inverter:
             length & 0xFF,
         ]
 
-        response = await self.solisClient.request(msg, msg_id)
-        if response != None:
-            if msg_id == 102:
-                log.debug(
-                    "Received response msg_id=%s start=%s end=%s len=%s raw=%s",
-                    msg_id,
-                    start,
-                    end,
-                    len(response),
-                    response[: len(response)],
-                )
-            params.parse(response, start - 1, length, msg_id)
+        try:
+            response = await self.solisClient.request(msg, msg_id)
+            if response != None:
+                if msg_id == 102:
+                    log.debug(
+                        "Received response msg_id=%s start=%s end=%s len=%s raw=%s",
+                        msg_id,
+                        start,
+                        end,
+                        len(response),
+                        response[: len(response)],
+                    )
+                params.parse(response, start - 1, length, msg_id)
+        except Exception as e:
+            log.warning(
+                f"Request failed for register range [{start} - {end}] with exception [{type(e).__name__}: {e}]"
+            )
+            raise
 
     async def write_holding_register(self, address, value, mb_fc, msg_id):
         msg = [
@@ -95,7 +101,7 @@ class Inverter:
         ]
 
         response = await self.solisClient.request(msg, msg_id)
-        return None
+        return response
 
     async def write_multiple_holding_registers(self, params, start, mb_fc, msg_id):
         length = len(params)
