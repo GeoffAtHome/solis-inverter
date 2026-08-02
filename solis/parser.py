@@ -1,10 +1,12 @@
 
 import logging
+import hundred_filter
 
 class ParameterParser:
     def __init__(self, lookups) ->None:
         self.result = {}
         self._lookups = lookups
+        self.hundred_filter = hundred_filter.HundredFilter()
         self._LOGGER = logging.getLogger(__name__)
         return
 
@@ -140,17 +142,17 @@ class ParameterParser:
 
                 value = value * scale
 
-                if 'validation' in definition:
-                    if not self.do_validate(title, value, definition['validation']):
-                        return
+                if 'validation' in definition and not self.do_validate(title, value, definition['validation']):
+                    return
 
                 if title == "Battery SOC":
-                    self._LOGGER.warning(
+                    self._LOGGER.debug(
                         "Parsed Battery SOC value=%s raw=%s validation=%s",
                         value,
                         raw_values,
                         definition.get('validation'),
                     )
+                    value = self.hundred_filter.process(value)
 
                 if self.is_integer_num(value):
                     self.result[title] = int(value)
