@@ -1,12 +1,12 @@
 
+from .hundred_filter import HundredFilter
 import logging
-import hundred_filter
 
 class ParameterParser:
     def __init__(self, lookups) ->None:
         self.result = {}
         self._lookups = lookups
-        self.hundred_filter = hundred_filter.HundredFilter()
+        self.hundred_filter = HundredFilter()
         self._LOGGER = logging.getLogger(__name__)
         return
 
