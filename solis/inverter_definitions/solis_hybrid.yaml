@@ -19,7 +19,7 @@ requests:
     mb_functioncode: 0x04
     msg_id: 103
 
-  - start: 43140
+  - start: 43110
     end: 43151
     mb_functioncode: 0x03
     msg_id: 104
