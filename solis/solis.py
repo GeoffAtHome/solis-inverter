@@ -10,8 +10,6 @@ from custom_components.solis_direct import PySolis_direct
 from asyncio import get_event_loop, sleep as asyncio_sleep
 
 
-log = logging.getLogger(__name__)
-
 QUERY_RETRY_ATTEMPTS = 4
 
 
@@ -27,6 +25,7 @@ class Inverter:
         self.status_connection = "Disconnected"
         self.status_lastUpdate = "N/A"
         self.lookup_file = lookup_file
+        self._LOGGER = logging.getLogger(__name__)
         if not self.lookup_file or lookup_file == "parameters.yaml":
             self.lookup_file = "deye_hybrid.yaml"
         self.parameter_definition = None
@@ -43,7 +42,7 @@ class Inverter:
     def connect_to_server(self):
         if self.solisClient:
             return self.solisClient
-        log.info(f"Connecting to Solis data logger {self._host}:{self._port}")
+        self._LOGGER.info(f"Connecting to Solis data logger {self._host}:{self._port}")
         self.solisClient = PySolis_direct(
             self._host, port=self._port, session=self.session
         )  # , logger=log, auto_reconnect=True, socket_timeout=15)
@@ -51,12 +50,12 @@ class Inverter:
     async def disconnect_from_server(self):
         if self.solisClient:
             try:
-                log.info(
+                self._LOGGER.info(
                     f"Disconnecting from Solis data logger {self._host}:{self._port}"
                 )
                 await self.solisClient.disconnect()
             except Exception as e:
-                log.debug(
+                self._LOGGER.debug(
                     f"Ignoring disconnect error for {self._host}:{self._port} [{type(e).__name__}: {e}]"
                 )
             finally:
@@ -77,7 +76,7 @@ class Inverter:
             if response != None:
                 params.parse(response, start - 1, length, msg_id)
         except Exception as e:
-            log.warning(
+            self._LOGGER.warning(
                 f"Request failed for register range [{start} - {end}] with exception [{type(e).__name__}: {e}]"
             )
             raise
@@ -123,7 +122,7 @@ class Inverter:
         result = 1
         params = ParameterParser(self.parameter_definition)
         requests = self.parameter_definition["requests"]
-        log.debug(f"Starting to query for [{len(requests)}] ranges...")
+        self._LOGGER.debug(f"Starting to query for [{len(requests)}] ranges...")
 
         try:
             for request in requests:
@@ -146,9 +145,9 @@ class Inverter:
                             f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
                         )
                         if attempts_left > 0:
-                            log.debug(msg)
+                            self._LOGGER.debug(msg)
                         else:
-                            log.warning(msg)
+                            self._LOGGER.warning(msg)
                         await self.disconnect_from_server()
                         if attempts_left > 0:
                             await asyncio_sleep(0.5)
@@ -158,30 +157,30 @@ class Inverter:
                             f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
                         )
                         if attempts_left > 0:
-                            log.debug(msg)
+                            self._LOGGER.debug(msg)
                         else:
-                            log.warning(msg)
+                            self._LOGGER.warning(msg)
                         await self.disconnect_from_server()
                     if result == 0:
                         if attempts_left > 0:
-                            log.debug(
+                            self._LOGGER.debug(
                                 f"Querying [{start} - {end}] failed, [{attempts_left}] retry attempts left"
                             )
                         else:
-                            log.warning(
+                            self._LOGGER.warning(
                                 f"Querying [{start} - {end}] failed after retries, aborting."
                             )
                     else:
-                        log.debug(f"Querying [{start} - {end}] succeeded")
+                        self._LOGGER.debug(f"Querying [{start} - {end}] succeeded")
                         break
                 if result == 0:
-                    log.warning(
+                    self._LOGGER.warning(
                         f"Querying registers [{start} - {end}] failed, aborting."
                     )
                     break
 
             if result == 1:
-                log.debug(f"All queries succeeded, exposing updated values.")
+                self._LOGGER.debug(f"All queries succeeded, exposing updated values.")
                 self.status_lastUpdate = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
                 self.status_connection = "Connected"
                 self._current_val = params.get_result()
@@ -191,7 +190,7 @@ class Inverter:
                 self._current_val = {}
                 await self.disconnect_from_server()
         except Exception as e:
-            log.warning(
+            self._LOGGER.warning(
                 f"Querying inverter {self._serial} at {self._host}:{self._port} failed with unexpected exception [{type(e).__name__}: {e}]"
             )
             self.status_connection = "Disconnected"
@@ -214,7 +213,7 @@ class Inverter:
                 raise ValueError("Cannot write empty value list to holding register")
             value = value[0]
         
-        log.debug(
+        self._LOGGER.debug(
             f"Service Call: write_holding_register : [{register}], value : [{value}]"
         )
         attempts_left = QUERY_RETRY_ATTEMPTS
@@ -227,21 +226,21 @@ class Inverter:
             except (ValueError, IndexError) as e:
                 msg = f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
                 if attempts_left > 0:
-                    log.debug(msg + f", [{attempts_left}] retry attempts left")
+                    self._LOGGER.debug(msg + f", [{attempts_left}] retry attempts left")
                 else:
-                    log.warning(msg)
+                    self._LOGGER.warning(msg)
                 await self.disconnect_from_server()
                 if attempts_left > 0:
                     await asyncio_sleep(0.5)
             except Exception as e:
-                log.warning(
+                self._LOGGER.warning(
                     f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
                 )
                 await self.disconnect_from_server()
                 return
 
     async def service_write_multiple_holding_registers(self, register, values):
-        log.debug(
+        self._LOGGER.debug(
             f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}]"
         )
         attempts_left = QUERY_RETRY_ATTEMPTS
@@ -254,14 +253,14 @@ class Inverter:
             except (ValueError, IndexError) as e:
                 msg = f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
                 if attempts_left > 0:
-                    log.debug(msg + f", [{attempts_left}] retry attempts left")
+                    self._LOGGER.debug(msg + f", [{attempts_left}] retry attempts left")
                 else:
-                    log.warning(msg)
+                    self._LOGGER.warning(msg)
                 await self.disconnect_from_server()
                 if attempts_left > 0:
                     await asyncio_sleep(0.5)
             except Exception as e:
-                log.warning(
+                self._LOGGER.warning(
                     f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
                 )
                 await self.disconnect_from_server()
