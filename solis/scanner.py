@@ -27,9 +27,11 @@ class InverterScanner:
                             self._ipaddress = a[0]
                             self._mac = a[1]
                             self._serial = int(a[2])
-                    except socket.timout:
+                    except socket.timeout:
                         break
-        except:
+                    except (UnicodeDecodeError, ValueError, IndexError):
+                        continue
+        except OSError:
             return None
 
     def get_ipaddress(self):

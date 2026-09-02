@@ -54,7 +54,7 @@ class Inverter:
                     f"Disconnecting from Solis data logger {self._host}:{self._port}"
                 )
                 await self.solisClient.disconnect()
-            except Exception as e:
+            except (ConnectionError, OSError) as e:
                 self._LOGGER.debug(
                     f"Ignoring disconnect error for {self._host}:{self._port} [{type(e).__name__}: {e}]"
                 )
@@ -73,7 +73,7 @@ class Inverter:
 
         try:
             response = await self.solisClient.request(msg, msg_id)
-            if response != None:
+            if response is not None:
                 params.parse(response, start - 1, length, msg_id)
         except Exception as e:
             self._LOGGER.warning(
@@ -138,8 +138,8 @@ class Inverter:
                         self.connect_to_server()
                         await self.send_request(params, start, end, mb_fc, msg_id)
                         result = 1
-                    except (ValueError, IndexError) as e:
-                        # ValueError for timeouts, IndexError for malformed responses
+                    except (ConnectionError, OSError, ValueError, IndexError) as e:
+                        # ValueError covers client timeouts and malformed responses.
                         result = 0
                         msg = (
                             f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
@@ -151,16 +151,6 @@ class Inverter:
                         await self.disconnect_from_server()
                         if attempts_left > 0:
                             await asyncio_sleep(0.5)
-                    except Exception as e:
-                        result = 0
-                        msg = (
-                            f"Querying [{start} - {end}] failed with exception [{type(e).__name__}: {e}]"
-                        )
-                        if attempts_left > 0:
-                            self._LOGGER.debug(msg)
-                        else:
-                            self._LOGGER.warning(msg)
-                        await self.disconnect_from_server()
                     if result == 0:
                         if attempts_left > 0:
                             self._LOGGER.debug(
@@ -189,9 +179,10 @@ class Inverter:
                 # Clear cached previous results to not report stale and incorrect data
                 self._current_val = {}
                 await self.disconnect_from_server()
-        except Exception as e:
+        except Exception:
             self._LOGGER.warning(
-                f"Querying inverter {self._serial} at {self._host}:{self._port} failed with unexpected exception [{type(e).__name__}: {e}]"
+                f"Querying inverter {self._serial} at {self._host}:{self._port} failed with an unexpected exception",
+                exc_info=True,
             )
             self.status_connection = "Disconnected"
             # Clear cached previous results to not report stale and incorrect data
@@ -223,7 +214,7 @@ class Inverter:
                 self.connect_to_server()
                 await self.write_holding_register(register, value, 0x06, 1)
                 return
-            except (ValueError, IndexError) as e:
+            except (ConnectionError, OSError, ValueError, IndexError) as e:
                 msg = f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
                 if attempts_left > 0:
                     self._LOGGER.debug(msg + f", [{attempts_left}] retry attempts left")
@@ -232,12 +223,8 @@ class Inverter:
                 await self.disconnect_from_server()
                 if attempts_left > 0:
                     await asyncio_sleep(0.5)
-            except Exception as e:
-                self._LOGGER.warning(
-                    f"Service Call: write_holding_register : [{register}], value : [{value}] failed with exception [{type(e).__name__}: {e}]"
-                )
-                await self.disconnect_from_server()
-                return
+                else:
+                    raise
 
     async def service_write_multiple_holding_registers(self, register, values):
         self._LOGGER.debug(
@@ -250,7 +237,7 @@ class Inverter:
                 self.connect_to_server()
                 await self.write_multiple_holding_registers(values, register, 0x10, 1)
                 return
-            except (ValueError, IndexError) as e:
+            except (ConnectionError, OSError, ValueError, IndexError) as e:
                 msg = f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
                 if attempts_left > 0:
                     self._LOGGER.debug(msg + f", [{attempts_left}] retry attempts left")
@@ -259,9 +246,5 @@ class Inverter:
                 await self.disconnect_from_server()
                 if attempts_left > 0:
                     await asyncio_sleep(0.5)
-            except Exception as e:
-                self._LOGGER.warning(
-                    f"Service Call: write_multiple_holding_registers: [{register}], values : [{values}] failed with exception [{type(e).__name__}: {e}]"
-                )
-                await self.disconnect_from_server()
-                return
+                else:
+                    raise
