@@ -5,6 +5,7 @@ import struct
 from homeassistant.util import Throttle
 from datetime import datetime
 from .parser import ParameterParser
+from .hundred_filter import HundredFilter
 from .const import *
 from custom_components.solis_direct import PySolis_direct
 from asyncio import get_event_loop, sleep as asyncio_sleep
@@ -25,6 +26,7 @@ class Inverter:
         self.status_connection = "Disconnected"
         self.status_lastUpdate = "N/A"
         self.lookup_file = lookup_file
+        self.hundred_filter = HundredFilter()
         self._LOGGER = logging.getLogger(__name__)
         if not self.lookup_file or lookup_file == "parameters.yaml":
             self.lookup_file = "deye_hybrid.yaml"
@@ -120,7 +122,7 @@ class Inverter:
 
     async def get_statistics(self):
         result = 1
-        params = ParameterParser(self.parameter_definition)
+        params = ParameterParser(self.parameter_definition, self.hundred_filter)
         requests = self.parameter_definition["requests"]
         self._LOGGER.debug(f"Starting to query for [{len(requests)}] ranges...")
 
