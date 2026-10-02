@@ -93,7 +93,7 @@ class ParameterParser:
                 value = value - definition['offset']
 
             if value > maxint/2:
-                value = (value - maxint) * scale
+                value = (value - (maxint + 1)) * scale
             else:
                 value = value * scale
 
